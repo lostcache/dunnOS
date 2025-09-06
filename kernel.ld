@@ -31,4 +31,3 @@ SECTIONS {
 	. += 64 * 1024 * 1024;
 	__free_ram_end = .;
 }
-
