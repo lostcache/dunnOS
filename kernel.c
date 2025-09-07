@@ -1,18 +1,14 @@
 #include "kernel.h"
 #include "common.h"
 
-typedef unsigned char uint8_t;
-typedef unsigned int uint32_t;
-typedef uint32_t size_t;
-
-extern char __bss[], __bss_end[], __stack_top[];
-extern char __free_ram[], __free_ram_end[];
+extern u8 __bss[], __bss_end[], __stack_top[];
+extern u8 __free_ram[], __free_ram_end[];
 
 struct process procs[PROCS_MAX];
 
-struct process *create_process(uint32_t pc) {
+struct process *create_process(u32 pc) {
     struct process *proc = NULL;
-    int i;
+    i32 i;
     for (i = 0; i < PROCS_MAX; ++i) {
         if (procs[i].state == PROC_UNUSED) {
             proc = &procs[i];
@@ -26,30 +22,29 @@ struct process *create_process(uint32_t pc) {
 
     // Stack callee-saved registers. These register values will be restored in
     // the first context switch in switch_context.
-    uint32_t *sp = (uint32_t *)&proc->stack[sizeof(proc->stack)];
-    *--sp = 0;            // s11
-    *--sp = 0;            // s10
-    *--sp = 0;            // s9
-    *--sp = 0;            // s8
-    *--sp = 0;            // s7
-    *--sp = 0;            // s6
-    *--sp = 0;            // s5
-    *--sp = 0;            // s4
-    *--sp = 0;            // s3
-    *--sp = 0;            // s2
-    *--sp = 0;            // s1
-    *--sp = 0;            // s0
-    *--sp = (uint32_t)pc; // ra
+    u32 *sp = (u32 *)&proc->stack[sizeof(proc->stack)];
+    *--sp = 0;       // s11
+    *--sp = 0;       // s10
+    *--sp = 0;       // s9
+    *--sp = 0;       // s8
+    *--sp = 0;       // s7
+    *--sp = 0;       // s6
+    *--sp = 0;       // s5
+    *--sp = 0;       // s4
+    *--sp = 0;       // s3
+    *--sp = 0;       // s2
+    *--sp = 0;       // s1
+    *--sp = 0;       // s0
+    *--sp = (u32)pc; // ra
 
     // Initialize fields.
     proc->pid = i + 1;
     proc->state = PROC_RUNNABLE;
-    proc->sp = (uint32_t)sp;
+    proc->sp = (u32)sp;
     return proc;
 }
 
-__attribute__((naked)) void switch_context(uint32_t *prev_sp,
-                                           uint32_t *next_sp) {
+__attribute__((naked)) void switch_context(u32 *prev_sp, u32 *next_sp) {
     __asm__ __volatile__(
         // Save callee-saved registers onto the current process's stack.
         "addi sp, sp, -13 * 4\n" // Allocate stack space for 13 4-byte registers
@@ -67,9 +62,9 @@ __attribute__((naked)) void switch_context(uint32_t *prev_sp,
         "sw s10, 11 * 4(sp)\n"
         "sw s11, 12 * 4(sp)\n"
 
-        // Switch the stack pointer.
+        // Switch the stack poi32er.
         "sw sp, (a0)\n" // *prev_sp = sp;
-        "lw sp, (a1)\n" // Switch stack pointer (sp) here
+        "lw sp, (a1)\n" // Switch stack poi32er (sp) here
 
         // Restore callee-saved registers from the next process's stack.
         "lw ra,  0  * 4(sp)\n" // Restore callee-saved registers only
@@ -90,12 +85,12 @@ __attribute__((naked)) void switch_context(uint32_t *prev_sp,
         "ret\n");
 }
 
-paddr_t alloc_pages(uint32_t n) {
-    static paddr_t next_paddr = (paddr_t)__free_ram;
-    paddr_t paddr = next_paddr;
+usize alloc_pages(u32 n) {
+    static usize next_paddr = (usize)__free_ram;
+    usize paddr = next_paddr;
     next_paddr += n * PAGE_SIZE;
 
-    if (next_paddr > (paddr_t)__free_ram_end) {
+    if (next_paddr > (usize)__free_ram_end) {
         PANIC("out of memory");
     }
 
@@ -207,16 +202,16 @@ __attribute__((naked)) __attribute__((aligned(4))) void kernel_entry(void) {
 }
 
 void handle_trap(struct trap_frame *f) {
-    uint32_t scause = READ_CSR(scause);
-    uint32_t stval = READ_CSR(stval);
-    uint32_t user_pc = READ_CSR(sepc);
+    u32 scause = READ_CSR(scause);
+    u32 stval = READ_CSR(stval);
+    u32 user_pc = READ_CSR(sepc);
 
     PANIC("unexpected trap scause=%x, stval=%x, sepc=%x\n", scause, stval,
           user_pc);
 }
 
 void delay(void) {
-    for (int i = 0; i < 30000000; ++i) {
+    for (i32 i = 0; i < 30000000; ++i) {
         __asm__ __volatile__("nop");
     }
 }
@@ -226,7 +221,7 @@ struct process *idle_proc;
 
 void yield(void) {
     struct process *next = idle_proc;
-    for (int i = 0; i < PROCS_MAX; i++) {
+    for (i32 i = 0; i < PROCS_MAX; i++) {
         struct process *proc = &procs[(curr_proc->pid + i) % PROCS_MAX];
         if (proc->state == PROC_RUNNABLE && proc->pid > 0) {
             next = proc;
@@ -240,7 +235,7 @@ void yield(void) {
     __asm__ __volatile__(
         "csrw sscratch, %[sscratch]\n"
         :
-        : [sscratch] "r"((uint32_t)&next->stack[sizeof(next->stack)]));
+        : [sscratch] "r"((u32)&next->stack[sizeof(next->stack)]));
 
     struct process *prev = curr_proc;
     curr_proc = next;
@@ -267,9 +262,9 @@ void proc_b_entry(void) {
 }
 
 void kernel_main(void) {
-    memset(__bss, 0, (size_t)__bss_end - (size_t)__bss);
+    memset(__bss, 0, (usize)__bss_end - (usize)__bss);
 
-    WRITE_CSR(stvec, (uint32_t)kernel_entry);
+    WRITE_CSR(stvec, (u32)kernel_entry);
     // __asm__ __volatile__("unimp");
 
     // printf("\n\nHello %s\n", "World!");
@@ -277,17 +272,17 @@ void kernel_main(void) {
     //     __asm__ __volatile__("wfi");
     // }
 
-    // paddr_t paddr0 = alloc_pages(2);
-    // paddr_t paddr1 = alloc_pages(1);
+    // usize paddr0 = alloc_pages(2);
+    // usize paddr1 = alloc_pages(1);
     // printf("alloc_pages test: paddr=%x\n", paddr0);
     // printf("alloc_pages test: paddr1=%x\n", paddr1);
 
-    idle_proc = create_process((uint32_t)NULL);
+    idle_proc = create_process((u32)NULL);
     idle_proc->pid = 0;
     curr_proc = idle_proc;
-    proc_a = create_process((uint32_t)proc_a_entry);
-    proc_b = create_process((uint32_t)proc_b_entry);
-    yield();
+    proc_a = create_process((u32)proc_a_entry);
+    proc_b = create_process((u32)proc_b_entry);
+    // yield();
     // proc_a_entry();
     PANIC("switched to idle process");
 }

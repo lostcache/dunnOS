@@ -1,41 +1,41 @@
 #include "common.h"
 
-void *memcpy(void *dst, const void *src, size_t n) {
-    uint8_t *d = (uint8_t *)dst;
-    const uint8_t *s = (const uint8_t *)src;
+void *memcpy(void *dst, const void *src, usize n) {
+    u8 *d = (u8 *)dst;
+    const u8 *s = (const u8 *)src;
     while (n--)
         *d++ = *s++;
     return dst;
 }
 
-void *memset(void *buf, char c, size_t n) {
-    uint8_t *p = (uint8_t *)buf;
+void *memset(void *buf, u8 c, usize n) {
+    u8 *p = (u8 *)buf;
     while (n--)
         *p++ = c;
     return buf;
 }
 
-char *strcpy(char *dst, const char *src) {
-    char *d = dst;
+u8 *strcpy(u8 *dst, const u8 *src) {
+    u8 *d = dst;
     while (*src)
         *d++ = *src++;
     *d = '\0';
     return dst;
 }
 
-int sttrcmp(const char *s1, const char *s2) {
+i32 strcmp(const u8 *s1, const u8 *s2) {
     while (*s1 && *s2) {
         if (*s1 != *s2)
             break;
         s1++;
         s2++;
     }
-    return *(unsigned char *)s1 - *(unsigned char *)s2;
+    return *(u8 *)s1 - *(u8 *)s2;
 }
 
-void putchar(char ch);
+void putchar(u8 ch);
 
-void printf(const char *fmt, ...) {
+void printf(const u8 *fmt, ...) {
     va_list vargs;
     va_start(vargs, fmt);
 
@@ -52,7 +52,7 @@ void printf(const char *fmt, ...) {
                 break;
             }
             case 's': {
-                const char *s = va_arg(vargs, const char *);
+                const u8 *s = va_arg(vargs, const u8 *);
                 while (*s) {
                     putchar(*s);
                     s++;
@@ -60,7 +60,7 @@ void printf(const char *fmt, ...) {
                 break;
             }
             case 'd': {
-                int value = va_arg(vargs, int);
+                i32 value = va_arg(vargs, i32);
                 unsigned magnitude = value;
                 if (value < 0) {
                     putchar('-');
@@ -80,7 +80,7 @@ void printf(const char *fmt, ...) {
             }
             case 'x': {
                 unsigned value = va_arg(vargs, unsigned);
-                for (int i = 7; i >= 0; i--) {
+                for (i32 i = 7; i >= 0; i--) {
                     unsigned nibble = (value >> (i * 4)) & 0xf;
                     putchar("0123456789abcdef"[nibble]);
                 }

@@ -7,6 +7,19 @@ typedef uint32_t size_t;
 typedef uint32_t paddr_t;
 typedef uint32_t vaddr_t;
 
+/*
+ * redefinition of types for a modern touch while still maintaining the C99
+ * standard.
+ */
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef size_t usize;
+typedef paddr_t usize;
+typedef vaddr_t usize;
+typedef int i32;
+
 #define true 1
 #define false 0
 #define NULL ((void *)0)
@@ -19,8 +32,8 @@ typedef uint32_t vaddr_t;
 #define va_arg __builtin_va_arg
 #define PAGE_SIZE 4096
 
-void *memset(void *buf, char c, size_t n);
-void *memcpy(void *dst, const void *src, size_t n);
-char *strcpy(char *dst, const char *src);
-int strcmp(const char *s1, const char *s2);
-void printf(const char *fmt, ...);
+void *memset(void *buf, u8 c, usize n);
+void *memcpy(void *dst, const void *src, usize n);
+u8 *strcpy(u8 *dst, const u8 *src);
+i32 strcmp(const u8 *s1, const u8 *s2);
+void printf(const u8 *fmt, ...);
