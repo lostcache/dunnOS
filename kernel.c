@@ -64,7 +64,7 @@ __attribute__((naked)) void switch_context(u32 *prev_sp, u32 *next_sp) {
 
         // Switch the stack poi32er.
         "sw sp, (a0)\n" // *prev_sp = sp;
-        "lw sp, (a1)\n" // Switch stack poi32er (sp) here
+        "lw sp, (a1)\n" // Switch stack pointer (sp) here
 
         // Restore callee-saved registers from the next process's stack.
         "lw ra,  0  * 4(sp)\n" // Restore callee-saved registers only
@@ -98,6 +98,31 @@ usize alloc_pages(u32 n) {
     return paddr;
 }
 
+/**
+ * Perform a Supervisor Binary Interface (SBI) call on RISC-V.
+ *
+ * This function executes an SBI call by placing arguments, function ID,
+ * and extension ID into the appropriate registers as per the RISC-V SBI ABI,
+ * then issues the 'ecall' instruction to trap into the supervisor execution
+ * environment.
+ *
+ * @param arg0 The first argument to the SBI function (goes into register a0).
+ * @param arg1 The second argument to the SBI function (a1).
+ * @param arg2 The third argument to the SBI function (a2).
+ * @param arg3 The fourth argument to the SBI function (a3).
+ * @param arg4 The fifth argument to the SBI function (a4).
+ * @param arg5 The sixth argument to the SBI function (a5).
+ * @param fid  The SBI function ID (a6).
+ * @param eid  The SBI extension ID (a7).
+ *
+ * @return A struct sbiret containing:
+ *         - error: the error code returned by the SBI call (from register a0).
+ *         - value: the value returned by the SBI call (from register a1).
+ *
+ * This function is used by the kernel or supervisor software to invoke
+ * privileged SBI services provided by the supervisor execution environment,
+ * such as timer setup, inter-processor interrupts, or power management.
+ */
 struct sbiret sbi_call(long arg0, long arg1, long arg2, long arg3, long arg4,
                        long arg5, long fid, long eid) {
     register long a0 __asm__("a0") = arg0;
@@ -121,85 +146,84 @@ struct sbiret sbi_call(long arg0, long arg1, long arg2, long arg3, long arg4,
 void putchar(char ch) { sbi_call(ch, 0, 0, 0, 0, 0, 0, 1); }
 
 __attribute__((naked)) __attribute__((aligned(4))) void kernel_entry(void) {
-    __asm__ __volatile__(
-        // Retrieve the kernel stack of the running process from sscratch.
-        "csrrw sp, sscratch, sp\n"
+    __asm__ __volatile__("csrrw sp, sscratch, sp\n"
 
-        "addi sp, sp, -4 * 31\n"
-        "sw ra,  4 * 0(sp)\n"
-        "sw gp,  4 * 1(sp)\n"
-        "sw tp,  4 * 2(sp)\n"
-        "sw t0,  4 * 3(sp)\n"
-        "sw t1,  4 * 4(sp)\n"
-        "sw t2,  4 * 5(sp)\n"
-        "sw t3,  4 * 6(sp)\n"
-        "sw t4,  4 * 7(sp)\n"
-        "sw t5,  4 * 8(sp)\n"
-        "sw t6,  4 * 9(sp)\n"
-        "sw a0,  4 * 10(sp)\n"
-        "sw a1,  4 * 11(sp)\n"
-        "sw a2,  4 * 12(sp)\n"
-        "sw a3,  4 * 13(sp)\n"
-        "sw a4,  4 * 14(sp)\n"
-        "sw a5,  4 * 15(sp)\n"
-        "sw a6,  4 * 16(sp)\n"
-        "sw a7,  4 * 17(sp)\n"
-        "sw s0,  4 * 18(sp)\n"
-        "sw s1,  4 * 19(sp)\n"
-        "sw s2,  4 * 20(sp)\n"
-        "sw s3,  4 * 21(sp)\n"
-        "sw s4,  4 * 22(sp)\n"
-        "sw s5,  4 * 23(sp)\n"
-        "sw s6,  4 * 24(sp)\n"
-        "sw s7,  4 * 25(sp)\n"
-        "sw s8,  4 * 26(sp)\n"
-        "sw s9,  4 * 27(sp)\n"
-        "sw s10, 4 * 28(sp)\n"
-        "sw s11, 4 * 29(sp)\n"
+                         "addi sp, sp, -4 * 31\n"
 
-        // Retrieve and save the sp at the time of exception.
-        "csrr a0, sscratch\n"
-        "sw a0, 4 * 30(sp)\n"
+                         "sw ra,  4 * 0(sp)\n"
+                         "sw gp,  4 * 1(sp)\n"
+                         "sw tp,  4 * 2(sp)\n"
+                         "sw t0,  4 * 3(sp)\n"
+                         "sw t1,  4 * 4(sp)\n"
+                         "sw t2,  4 * 5(sp)\n"
+                         "sw t3,  4 * 6(sp)\n"
+                         "sw t4,  4 * 7(sp)\n"
+                         "sw t5,  4 * 8(sp)\n"
+                         "sw t6,  4 * 9(sp)\n"
+                         "sw a0,  4 * 10(sp)\n"
+                         "sw a1,  4 * 11(sp)\n"
+                         "sw a2,  4 * 12(sp)\n"
+                         "sw a3,  4 * 13(sp)\n"
+                         "sw a4,  4 * 14(sp)\n"
+                         "sw a5,  4 * 15(sp)\n"
+                         "sw a6,  4 * 16(sp)\n"
+                         "sw a7,  4 * 17(sp)\n"
+                         "sw s0,  4 * 18(sp)\n"
+                         "sw s1,  4 * 19(sp)\n"
+                         "sw s2,  4 * 20(sp)\n"
+                         "sw s3,  4 * 21(sp)\n"
+                         "sw s4,  4 * 22(sp)\n"
+                         "sw s5,  4 * 23(sp)\n"
+                         "sw s6,  4 * 24(sp)\n"
+                         "sw s7,  4 * 25(sp)\n"
+                         "sw s8,  4 * 26(sp)\n"
+                         "sw s9,  4 * 27(sp)\n"
+                         "sw s10, 4 * 28(sp)\n"
+                         "sw s11, 4 * 29(sp)\n"
 
-        // Reset the kernel stack.
-        "addi a0, sp, 4 * 31\n"
-        "csrw sscratch, a0\n"
+                         "csrr a0, sscratch\n"
+                         "sw a0, 4 * 30(sp)\n"
 
-        "mv a0, sp\n"
-        "call handle_trap\n"
+                         "addi a0, sp, 4 * 31\n"
+                         "csrw sscratch, a0\n"
 
-        "lw ra,  4 * 0(sp)\n"
-        "lw gp,  4 * 1(sp)\n"
-        "lw tp,  4 * 2(sp)\n"
-        "lw t0,  4 * 3(sp)\n"
-        "lw t1,  4 * 4(sp)\n"
-        "lw t2,  4 * 5(sp)\n"
-        "lw t3,  4 * 6(sp)\n"
-        "lw t4,  4 * 7(sp)\n"
-        "lw t5,  4 * 8(sp)\n"
-        "lw t6,  4 * 9(sp)\n"
-        "lw a0,  4 * 10(sp)\n"
-        "lw a1,  4 * 11(sp)\n"
-        "lw a2,  4 * 12(sp)\n"
-        "lw a3,  4 * 13(sp)\n"
-        "lw a4,  4 * 14(sp)\n"
-        "lw a5,  4 * 15(sp)\n"
-        "lw a6,  4 * 16(sp)\n"
-        "lw a7,  4 * 17(sp)\n"
-        "lw s0,  4 * 18(sp)\n"
-        "lw s1,  4 * 19(sp)\n"
-        "lw s2,  4 * 20(sp)\n"
-        "lw s3,  4 * 21(sp)\n"
-        "lw s4,  4 * 22(sp)\n"
-        "lw s5,  4 * 23(sp)\n"
-        "lw s6,  4 * 24(sp)\n"
-        "lw s7,  4 * 25(sp)\n"
-        "lw s8,  4 * 26(sp)\n"
-        "lw s9,  4 * 27(sp)\n"
-        "lw s10, 4 * 28(sp)\n"
-        "lw s11, 4 * 29(sp)\n"
-        "lw sp,  4 * 30(sp)\n"
-        "sret\n");
+                         "mv a0, sp\n"
+                         "call handle_trap\n"
+
+                         "lw ra,  4 * 0(sp)\n"
+                         "lw gp,  4 * 1(sp)\n"
+                         "lw tp,  4 * 2(sp)\n"
+                         "lw t0,  4 * 3(sp)\n"
+                         "lw t1,  4 * 4(sp)\n"
+                         "lw t2,  4 * 5(sp)\n"
+                         "lw t3,  4 * 6(sp)\n"
+                         "lw t4,  4 * 7(sp)\n"
+                         "lw t5,  4 * 8(sp)\n"
+                         "lw t6,  4 * 9(sp)\n"
+                         "lw a0,  4 * 10(sp)\n"
+                         "lw a1,  4 * 11(sp)\n"
+                         "lw a2,  4 * 12(sp)\n"
+                         "lw a3,  4 * 13(sp)\n"
+                         "lw a4,  4 * 14(sp)\n"
+                         "lw a5,  4 * 15(sp)\n"
+                         "lw a6,  4 * 16(sp)\n"
+                         "lw a7,  4 * 17(sp)\n"
+                         "lw s0,  4 * 18(sp)\n"
+                         "lw s1,  4 * 19(sp)\n"
+                         "lw s2,  4 * 20(sp)\n"
+                         "lw s3,  4 * 21(sp)\n"
+                         "lw s4,  4 * 22(sp)\n"
+                         "lw s5,  4 * 23(sp)\n"
+                         "lw s6,  4 * 24(sp)\n"
+                         "lw s7,  4 * 25(sp)\n"
+                         "lw s8,  4 * 26(sp)\n"
+                         "lw s9,  4 * 27(sp)\n"
+                         "lw s10, 4 * 28(sp)\n"
+                         "lw s11, 4 * 29(sp)\n"
+
+                         "lw sp,  4 * 30(sp)\n"
+
+                         "sret\n");
 }
 
 void handle_trap(struct trap_frame *f) {
@@ -207,7 +231,7 @@ void handle_trap(struct trap_frame *f) {
     u32 stval = READ_CSR(stval);
     u32 user_pc = READ_CSR(sepc);
 
-    PANIC("unexpected trap scause=%x, stval=%x, sepc=%x\n", scause, stval,
+    PANIC("unexpected trap scause=%x, stval=%x, sepc=%x", scause, stval,
           user_pc);
 }
 
